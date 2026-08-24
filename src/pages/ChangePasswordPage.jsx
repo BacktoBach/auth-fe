@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import Alert from '../components/Alert.jsx'
 import FormField from '../components/FormField.jsx'
 import { useAuth } from '../context/useAuth.js'
+import { ROUTES } from '../routes/paths.js'
 
 const passwordBytes = (value) => new TextEncoder().encode(value).length
 
@@ -39,7 +40,7 @@ export default function ChangePasswordPage() {
     setSubmitting(true)
     try {
       await changePassword({ oldPassword: form.oldPassword, newPassword: form.newPassword })
-      navigate('/login', { replace: true, state: { message: 'Đổi mật khẩu thành công. Token cũ đã bị thu hồi, vui lòng đăng nhập lại.' } })
+      navigate(ROUTES.login, { replace: true, state: { message: 'Đổi mật khẩu thành công. Token cũ đã bị thu hồi, vui lòng đăng nhập lại.' } })
     } catch (requestError) {
       setServerError(requestError.message)
     } finally {

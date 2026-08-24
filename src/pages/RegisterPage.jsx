@@ -4,6 +4,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom'
 import Alert from '../components/Alert.jsx'
 import FormField from '../components/FormField.jsx'
 import { useAuth } from '../context/useAuth.js'
+import { getDashboardPath, ROUTES } from '../routes/paths.js'
 
 const passwordBytes = (value) => new TextEncoder().encode(value).length
 
@@ -17,7 +18,7 @@ export default function RegisterPage() {
   const [serverError, setServerError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  if (user) return <Navigate to={user.role === 'admin' ? '/admin' : '/dashboard'} replace />
+  if (user) return <Navigate to={getDashboardPath(user.role)} replace />
 
   const validate = () => {
     const nextErrors = {}
@@ -42,7 +43,7 @@ export default function RegisterPage() {
     setSubmitting(true)
     try {
       await register({ name: form.name, email: form.email, password: form.password })
-      navigate('/login', { replace: true, state: { message: 'Đăng ký thành công. Hãy đăng nhập để tiếp tục.' } })
+      navigate(ROUTES.login, { replace: true, state: { message: 'Đăng ký thành công. Hãy đăng nhập để tiếp tục.' } })
     } catch (requestError) {
       setServerError(requestError.message)
     } finally {
@@ -52,7 +53,7 @@ export default function RegisterPage() {
 
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/50 sm:p-8">
-      <Link to="/login" className="mb-5 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-indigo-600"><ArrowLeft size={17} /> Quay lại đăng nhập</Link>
+      <Link to={ROUTES.login} className="mb-5 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-indigo-600"><ArrowLeft size={17} /> Quay lại đăng nhập</Link>
       <div className="mb-6"><p className="text-sm font-bold text-indigo-600">Tạo tài khoản user</p><h2 className="mt-1 text-3xl font-bold tracking-tight text-slate-950">Đăng ký</h2><p className="mt-2 text-sm leading-6 text-slate-500">Điền thông tin bên dưới để bắt đầu sử dụng hệ thống.</p></div>
       {serverError && <div className="mb-5"><Alert>{serverError}</Alert></div>}
       <form className="space-y-4" onSubmit={handleSubmit} noValidate>

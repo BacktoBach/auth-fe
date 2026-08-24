@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Activity, CheckCircle2, Clock3, Copy, KeyRound, RefreshCw, ShieldCheck, UserRound, Users } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { authApi } from '../api/client.js'
 import Alert from '../components/Alert.jsx'
 import { useAuth } from '../context/useAuth.js'
+import { ROUTES } from '../routes/paths.js'
+import { systemService } from '../services/systemService.js'
+import { userService } from '../services/userService.js'
 
 const initials = (name = '') => name.split(' ').filter(Boolean).slice(-2).map((part) => part[0]).join('').toUpperCase()
 
@@ -31,10 +33,10 @@ export default function DashboardPage() {
     const controller = new AbortController()
     const loadOverview = async () => {
       try {
-        const health = await authApi.health(controller.signal)
+        const health = await systemService.getHealth(controller.signal)
         setApiHealthy(health.status === 'healthy')
         if (user.role === 'admin') {
-          const response = await authApi.users({ page: 1, limit: 1, token, signal: controller.signal })
+          const response = await userService.getUsers({ page: 1, limit: 1, token, signal: controller.signal })
           setTotalUsers(response.pagination.total)
         }
       } catch (requestError) {
@@ -103,8 +105,8 @@ export default function DashboardPage() {
             <div className="flex items-center gap-3"><div className="grid size-10 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><CheckCircle2 size={20} /></div><div><h3 className="font-bold">Bảo mật đang hoạt động</h3><p className="text-xs text-slate-500">JWT + bcrypt + RBAC</p></div></div>
             <ul className="mt-5 space-y-3 text-sm text-slate-600"><li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-emerald-500" /> Token được verify ở mỗi protected route</li><li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-emerald-500" /> Role được đọc lại từ database</li><li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-emerald-500" /> Token cũ bị thu hồi khi đổi mật khẩu</li></ul>
           </div>
-          <Link to="/change-password" className="group flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-200 hover:shadow-md"><div className="flex items-center gap-3"><div className="grid size-10 place-items-center rounded-xl bg-indigo-50 text-indigo-700"><KeyRound size={20} /></div><div><p className="font-bold">Đổi mật khẩu</p><p className="text-xs text-slate-500">Thu hồi token hiện tại</p></div></div><span className="text-sm font-bold text-indigo-600 transition group-hover:translate-x-1">Mở →</span></Link>
-          {user.role === 'admin' && <Link to="/admin/users" className="group flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-violet-200 hover:shadow-md"><div className="flex items-center gap-3"><div className="grid size-10 place-items-center rounded-xl bg-violet-50 text-violet-700"><UserRound size={20} /></div><div><p className="font-bold">Quản lý người dùng</p><p className="text-xs text-slate-500">Admin-only route</p></div></div><span className="text-sm font-bold text-violet-600 transition group-hover:translate-x-1">Mở →</span></Link>}
+          <Link to={ROUTES.changePassword} className="group flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-200 hover:shadow-md"><div className="flex items-center gap-3"><div className="grid size-10 place-items-center rounded-xl bg-indigo-50 text-indigo-700"><KeyRound size={20} /></div><div><p className="font-bold">Đổi mật khẩu</p><p className="text-xs text-slate-500">Thu hồi token hiện tại</p></div></div><span className="text-sm font-bold text-indigo-600 transition group-hover:translate-x-1">Mở →</span></Link>
+          {user.role === 'admin' && <Link to={ROUTES.adminUsers} className="group flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-violet-200 hover:shadow-md"><div className="flex items-center gap-3"><div className="grid size-10 place-items-center rounded-xl bg-violet-50 text-violet-700"><UserRound size={20} /></div><div><p className="font-bold">Quản lý người dùng</p><p className="text-xs text-slate-500">Admin-only route</p></div></div><span className="text-sm font-bold text-violet-600 transition group-hover:translate-x-1">Mở →</span></Link>}
         </div>
       </section>
     </div>

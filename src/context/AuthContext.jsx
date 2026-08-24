@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { authApi } from '../api/client.js'
+import { authService } from '../services/authService.js'
 import AuthContext from './auth-context.js'
 
 const SESSION_KEY = 'jwt-auth-session'
@@ -51,7 +51,7 @@ export function AuthProvider({ children }) {
       }
 
       try {
-        const response = await authApi.me(session.token, controller.signal)
+        const response = await authService.getCurrentUser(session.token, controller.signal)
         const refreshed = { ...session, user: response.user }
         const remember = Boolean(localStorage.getItem(SESSION_KEY))
         storeSession(refreshed, remember)
@@ -70,7 +70,7 @@ export function AuthProvider({ children }) {
   }, [])
 
   const login = useCallback(async (credentials, remember) => {
-    const response = await authApi.login(credentials)
+    const response = await authService.login(credentials)
     const nextSession = { token: response.token, user: response.user }
     storeSession(nextSession, remember)
     setSession(nextSession)
@@ -78,11 +78,11 @@ export function AuthProvider({ children }) {
     return response.user
   }, [])
 
-  const register = useCallback((payload) => authApi.register(payload), [])
+  const register = useCallback((payload) => authService.register(payload), [])
 
   const logout = useCallback(async () => {
     try {
-      if (session?.token) await authApi.logout(session.token)
+      if (session?.token) await authService.logout(session.token)
     } finally {
       clearSession(false)
     }
@@ -91,7 +91,7 @@ export function AuthProvider({ children }) {
   const refreshUser = useCallback(async () => {
     if (!session?.token) return null
     try {
-      const response = await authApi.me(session.token)
+      const response = await authService.getCurrentUser(session.token)
       const refreshed = { ...session, user: response.user }
       const remember = Boolean(localStorage.getItem(SESSION_KEY))
       storeSession(refreshed, remember)
@@ -106,7 +106,7 @@ export function AuthProvider({ children }) {
   const changePassword = useCallback(async (payload) => {
     if (!session?.token) throw new Error('Phiên đăng nhập không tồn tại')
     try {
-      await authApi.changePassword(payload, session.token)
+      await authService.changePassword(payload, session.token)
       clearSession(false)
     } catch (error) {
       if (error.status === 401) clearSession(true)

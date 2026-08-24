@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { ChevronLeft, ChevronRight, LoaderCircle, RefreshCw, Search, Users } from 'lucide-react'
-import { authApi } from '../api/client.js'
 import Alert from '../components/Alert.jsx'
 import { useAuth } from '../context/useAuth.js'
+import { userService } from '../services/userService.js'
 
 const initials = (name = '') => name.split(' ').filter(Boolean).slice(-2).map((part) => part[0]).join('').toUpperCase()
 const shortenId = (id = '') => id.length > 12 ? `${id.slice(0, 6)}…${id.slice(-4)}` : id
@@ -24,7 +24,7 @@ export default function UsersPage() {
       setLoading(true)
       setError('')
       try {
-        const response = await authApi.users({ page, limit, token, signal: controller.signal })
+        const response = await userService.getUsers({ page, limit, token, signal: controller.signal })
         setUsers(response.users)
         setPagination(response.pagination)
       } catch (requestError) {

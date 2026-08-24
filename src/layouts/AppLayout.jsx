@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import Brand from '../components/Brand.jsx'
 import { useAuth } from '../context/useAuth.js'
+import { getDashboardPath, ROUTES } from '../routes/paths.js'
 
 const initials = (name = '') => name
   .split(' ')
@@ -27,24 +28,24 @@ export default function AppLayout() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [confirmLogout, setConfirmLogout] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
-  const homePath = user.role === 'admin' ? '/admin' : '/dashboard'
+  const homePath = getDashboardPath(user.role)
 
   const navigation = [
     { to: homePath, label: 'Tổng quan', icon: LayoutDashboard, end: true },
-    ...(user.role === 'admin' ? [{ to: '/admin/users', label: 'Người dùng', icon: Users }] : []),
-    { to: '/change-password', label: 'Đổi mật khẩu', icon: KeyRound },
+    ...(user.role === 'admin' ? [{ to: ROUTES.adminUsers, label: 'Người dùng', icon: Users }] : []),
+    { to: ROUTES.changePassword, label: 'Đổi mật khẩu', icon: KeyRound },
   ]
 
-  const pageTitle = location.pathname === '/admin/users'
+  const pageTitle = location.pathname === ROUTES.adminUsers
     ? 'Quản lý người dùng'
-    : location.pathname === '/change-password'
+    : location.pathname === ROUTES.changePassword
       ? 'Đổi mật khẩu'
       : 'Tổng quan tài khoản'
 
   const handleLogout = async () => {
     setLoggingOut(true)
     await logout()
-    navigate('/login', { replace: true, state: { message: 'Bạn đã đăng xuất thành công.' } })
+    navigate(ROUTES.login, { replace: true, state: { message: 'Bạn đã đăng xuất thành công.' } })
   }
 
   return (

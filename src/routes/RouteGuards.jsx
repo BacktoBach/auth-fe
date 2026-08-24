@@ -1,6 +1,7 @@
-import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { LoaderCircle } from 'lucide-react'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/useAuth.js'
+import { getDashboardPath, ROUTES } from './paths.js'
 
 export function FullPageLoader() {
   return (
@@ -19,20 +20,23 @@ export function ProtectedRoute() {
 
   if (initializing) return <FullPageLoader />
   if (!token || !user) {
-    if (sessionExpired) return <Navigate to="/session-expired" replace />
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />
+    if (sessionExpired) return <Navigate to={ROUTES.sessionExpired} replace />
+    return <Navigate to={ROUTES.login} replace state={{ from: location.pathname }} />
   }
+
   return <Outlet />
 }
 
 export function AdminRoute() {
   const { user } = useAuth()
-  return user?.role === 'admin' ? <Outlet /> : <Navigate to="/forbidden" replace />
+  return user?.role === 'admin' ? <Outlet /> : <Navigate to={ROUTES.forbidden} replace />
 }
 
 export function HomeRedirect() {
   const { user, initializing } = useAuth()
+
   if (initializing) return <FullPageLoader />
-  if (!user) return <Navigate to="/login" replace />
-  return <Navigate to={user.role === 'admin' ? '/admin' : '/dashboard'} replace />
+  if (!user) return <Navigate to={ROUTES.login} replace />
+
+  return <Navigate to={getDashboardPath(user.role)} replace />
 }

@@ -46,20 +46,3 @@ export const apiRequest = async (path, options = {}) => {
 
   return data
 }
-
-export const authApi = {
-  register: (payload) => apiRequest('/api/auth/register', { method: 'POST', body: payload }),
-  login: (payload) => apiRequest('/api/auth/login', { method: 'POST', body: payload }),
-  me: (token, signal) => apiRequest('/api/auth/me', { token, signal }),
-  changePassword: (payload, token) => apiRequest('/api/auth/change-password', {
-    method: 'PUT',
-    body: payload,
-    token,
-  }),
-  logout: (token) => apiRequest('/api/auth/logout', { method: 'POST', token }),
-  users: ({ page, limit, token, signal }) => apiRequest(
-    `/api/auth/users?page=${page}&limit=${limit}`,
-    { token, signal },
-  ),
-  health: (signal) => apiRequest('/health', { signal }),
-}
