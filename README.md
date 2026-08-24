@@ -26,16 +26,16 @@ VITE_API_URL=https://auth-api-jne3.onrender.com
 
 ## Frontend routes
 
-| Route | Access | Chức năng |
-| --- | --- | --- |
-| `/login` | Public | Đăng nhập chung cho user/admin |
-| `/register` | Public | Đăng ký tài khoản role user |
-| `/dashboard` | User/Admin | Thông tin từ `GET /api/auth/me` |
+| Route                | Access     | Chức năng                             |
+| -------------------- | ---------- | --------------------------------------- |
+| `/login`           | Public     | Đăng nhập chung cho user/admin       |
+| `/register`        | Public     | Đăng ký tài khoản role user        |
+| `/dashboard`       | User/Admin | Thông tin từ`GET /api/auth/me`      |
 | `/change-password` | User/Admin | Đổi mật khẩu và thu hồi token cũ |
-| `/admin` | Admin | Admin overview |
-| `/admin/users` | Admin | Danh sách user có pagination |
-| `/forbidden` | Public | Trang lỗi 403 |
-| `/session-expired` | Public | Phiên đăng nhập hết hạn |
+| `/admin`           | Admin      | Admin overview                          |
+| `/admin/users`     | Admin      | Danh sách user có pagination          |
+| `/forbidden`       | Public     | Trang lỗi 403                          |
+| `/session-expired` | Public     | Phiên đăng nhập hết hạn           |
 
 ## Authentication flow
 
@@ -53,6 +53,15 @@ VITE_API_URL=https://auth-api-jne3.onrender.com
 npm run lint
 npm run build
 ```
+
+
+
+## Demo accounts
+
+- User account: Có thể đăng ký trực tiếp trên giao diện.
+- Admin account: user-render@example.com/NewPass123
+
+
 
 ## Deploy
 
