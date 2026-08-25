@@ -46,3 +46,5 @@ export const apiRequest = async (path, options = {}) => {
 
   return data
 }
+
+export const checkHealth = (signal) => apiRequest('/health', { signal })

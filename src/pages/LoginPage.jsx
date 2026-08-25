@@ -4,7 +4,6 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import Alert from '../components/Alert.jsx'
 import FormField from '../components/FormField.jsx'
 import { useAuth } from '../context/useAuth.js'
-import { getDashboardPath, ROUTES } from '../routes/paths.js'
 
 export default function LoginPage() {
   const { user, login, clearExpiredState } = useAuth()
@@ -16,7 +15,7 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  if (user) return <Navigate to={getDashboardPath(user.role)} replace />
+  if (user) return <Navigate to={user.role === 'admin' ? '/admin' : '/dashboard'} replace />
 
   const handleChange = (event) => {
     setForm((current) => ({ ...current, [event.target.name]: event.target.value }))
@@ -31,8 +30,8 @@ export default function LoginPage() {
       clearExpiredState()
       const loggedInUser = await login(form, remember)
       const intendedPath = location.state?.from
-      const fallback = getDashboardPath(loggedInUser.role)
-      const destination = loggedInUser.role === 'admin' && intendedPath?.startsWith(ROUTES.adminDashboard)
+      const fallback = loggedInUser.role === 'admin' ? '/admin' : '/dashboard'
+      const destination = loggedInUser.role === 'admin' && intendedPath?.startsWith('/admin')
         ? intendedPath
         : fallback
       navigate(destination, { replace: true })
@@ -66,7 +65,7 @@ export default function LoginPage() {
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-slate-500">Chưa có tài khoản? <Link to={ROUTES.register} className="font-bold text-indigo-600 hover:text-indigo-700">Đăng ký ngay</Link></p>
+      <p className="mt-6 text-center text-sm text-slate-500">Chưa có tài khoản? <Link to="/register" className="font-bold text-indigo-600 hover:text-indigo-700">Đăng ký ngay</Link></p>
       <p className="mt-5 rounded-xl bg-slate-50 px-3 py-2.5 text-center text-xs leading-5 text-slate-500">Máy chủ Render miễn phí có thể cần một chút thời gian để khởi động ở lần truy cập đầu tiên.</p>
     </div>
   )
