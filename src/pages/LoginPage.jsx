@@ -31,7 +31,10 @@ export default function LoginPage() {
       const loggedInUser = await login(form, remember)
       const intendedPath = location.state?.from
       const fallback = loggedInUser.role === 'admin' ? '/admin' : '/dashboard'
-      const destination = loggedInUser.role === 'admin' && intendedPath?.startsWith('/admin')
+      const canReturn = intendedPath === '/change-password'
+        || intendedPath === '/dashboard'
+        || (loggedInUser.role === 'admin' && intendedPath?.startsWith('/admin'))
+      const destination = canReturn
         ? intendedPath
         : fallback
       navigate(destination, { replace: true })

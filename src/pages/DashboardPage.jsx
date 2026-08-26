@@ -31,19 +31,31 @@ export default function DashboardPage() {
   useEffect(() => {
     const controller = new AbortController()
     const loadOverview = async () => {
-      try {
-        const health = await checkHealth(controller.signal)
-        setApiHealthy(health.status === 'healthy')
-        if (user.role === 'admin') {
+      const loadHealth = async () => {
+        try {
+          const health = await checkHealth(controller.signal)
+          setApiHealthy(health.status === 'healthy')
+        } catch (requestError) {
+          if (requestError.name !== 'AbortError') setApiHealthy(false)
+        }
+      }
+
+      const loadUserCount = async () => {
+        if (user.role !== 'admin') return
+
+        try {
           const response = await getUsers({ page: 1, limit: 1, token, signal: controller.signal })
           setTotalUsers(response.pagination.total)
+        } catch (requestError) {
+          if (requestError.name === 'AbortError') return
+          if (requestError.status === 401) expireSession()
+          setTotalUsers(null)
         }
-      } catch (requestError) {
-        if (requestError.name === 'AbortError') return
-        if (requestError.status === 401) expireSession()
-        setApiHealthy(false)
       }
+
+      await Promise.all([loadHealth(), loadUserCount()])
     }
+
     void loadOverview()
     return () => controller.abort()
   }, [expireSession, token, user.role])
@@ -51,6 +63,7 @@ export default function DashboardPage() {
   const handleRefresh = async () => {
     setRefreshing(true)
     setError('')
+
     try {
       await refreshUser()
     } catch (requestError) {
@@ -61,9 +74,15 @@ export default function DashboardPage() {
   }
 
   const copyId = async () => {
-    await navigator.clipboard.writeText(user.id)
-    setCopied(true)
-    window.setTimeout(() => setCopied(false), 1500)
+    setError('')
+
+    try {
+      await navigator.clipboard.writeText(user.id)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1500)
+    } catch {
+      setError('Không thể sao chép User ID. Vui lòng sao chép thủ công.')
+    }
   }
 
   return (

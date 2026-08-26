@@ -32,7 +32,7 @@ export default function UsersPage() {
         if (requestError.status === 401) expireSession()
         setError(requestError.message)
       } finally {
-        setLoading(false)
+        if (!controller.signal.aborted) setLoading(false)
       }
     }
     void loadUsers()
