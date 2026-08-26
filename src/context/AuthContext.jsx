@@ -16,7 +16,7 @@ const readStoredSession = () => {
 
   try {
     const session = JSON.parse(raw)
-    return session?.token ? session : null
+    return session?.token && session?.user ? session : null
   } catch {
     localStorage.removeItem(SESSION_KEY)
     sessionStorage.removeItem(SESSION_KEY)
@@ -63,9 +63,9 @@ export function AuthProvider({ children }) {
         storeSession(refreshed, remember)
         setSession(refreshed)
       } catch (error) {
-        if (error.name !== 'AbortError') clearSession(error.status === 401)
+        if (error.name !== 'AbortError' && error.status === 401) clearSession(true)
       } finally {
-        setInitializing(false)
+        if (!controller.signal.aborted) setInitializing(false)
       }
     }
 

@@ -13,10 +13,19 @@ export class ApiError extends Error {
 
 const parseResponse = async (response) => {
   const contentType = response.headers.get('content-type') || ''
-  if (contentType.includes('application/json')) return response.json()
-
   const text = await response.text()
-  return text ? { message: text } : {}
+
+  if (!text) return {}
+
+  if (contentType.includes('application/json')) {
+    try {
+      return JSON.parse(text)
+    } catch {
+      throw new ApiError('Phản hồi từ máy chủ không hợp lệ', response.status)
+    }
+  }
+
+  return { message: text }
 }
 
 export const apiRequest = async (path, options = {}) => {
