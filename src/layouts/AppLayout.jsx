@@ -43,8 +43,13 @@ export default function AppLayout() {
 
   const handleLogout = async () => {
     setLoggingOut(true)
-    await logout()
-    navigate('/login', { replace: true, state: { message: 'Bạn đã đăng xuất thành công.' } })
+    let message = 'Bạn đã đăng xuất thành công.'
+    try {
+      await logout()
+    } catch {
+      message = 'Đã xóa phiên trên giao diện nhưng không thể xác nhận với máy chủ.'
+    }
+    navigate('/login', { replace: true, state: { message } })
   }
 
   return (
@@ -136,7 +141,7 @@ export default function AppLayout() {
           <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
             <div className="grid size-11 place-items-center rounded-xl bg-rose-50 text-rose-600"><LogOut size={22} /></div>
             <h2 className="mt-4 text-lg font-bold">Xác nhận đăng xuất?</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-500">Token sẽ được xóa khỏi trình duyệt và bạn cần đăng nhập lại để tiếp tục.</p>
+            <p className="mt-2 text-sm leading-6 text-slate-500">Cookie đăng nhập sẽ được xóa và bạn cần đăng nhập lại để tiếp tục.</p>
             <div className="mt-6 flex justify-end gap-3">
               <button className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50" onClick={() => setConfirmLogout(false)}>Hủy</button>
               <button disabled={loggingOut} className="rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-60" onClick={handleLogout}>

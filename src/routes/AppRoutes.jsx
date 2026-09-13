@@ -22,11 +22,11 @@ function FullPageLoader() {
 }
 
 function ProtectedRoute() {
-  const { token, user, initializing, sessionExpired } = useAuth()
+  const { user, initializing, sessionExpired } = useAuth()
   const location = useLocation()
 
   if (initializing) return <FullPageLoader />
-  if (!token || !user) {
+  if (!user) {
     if (sessionExpired) return <Navigate to="/session-expired" replace />
     return <Navigate to="/login" replace state={{ from: location.pathname }} />
   }

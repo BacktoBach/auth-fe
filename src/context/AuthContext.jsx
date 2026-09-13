@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   changePassword as requestPasswordChange,
   getCurrentUser,
@@ -6,44 +6,45 @@ import {
   logout as requestLogout,
   register as requestRegister,
 } from '../services/authService.js'
+import { setUnauthorizedHandler } from '../services/api.js'
 import AuthContext from './auth-context.js'
 
-const SESSION_KEY = 'jwt-auth-session'
+const AUTH_CHANNEL = 'auth-session'
+const AUTH_EVENT_KEY = 'auth-sync-event'
+const TAB_ID = crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`
 
-const readStoredSession = () => {
-  const raw = localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(SESSION_KEY)
-  if (!raw) return null
+const publishAuthEvent = (type) => {
+  const event = {
+    type,
+    id: crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`,
+    sourceTabId: TAB_ID,
+    timestamp: Date.now(),
+  }
 
+  if ('BroadcastChannel' in window) {
+    const channel = new BroadcastChannel(AUTH_CHANNEL)
+    channel.postMessage(event)
+    channel.close()
+  }
   try {
-    const session = JSON.parse(raw)
-    return session?.token && session?.user ? session : null
+    localStorage.setItem(AUTH_EVENT_KEY, JSON.stringify(event))
   } catch {
-    localStorage.removeItem(SESSION_KEY)
-    sessionStorage.removeItem(SESSION_KEY)
-    return null
+    // BroadcastChannel already covers supported browsers when storage is unavailable.
   }
 }
 
-const storeSession = (session, remember) => {
-  localStorage.removeItem(SESSION_KEY)
-  sessionStorage.removeItem(SESSION_KEY)
-  const storage = remember ? localStorage : sessionStorage
-  storage.setItem(SESSION_KEY, JSON.stringify(session))
-}
-
-const removeStoredSession = () => {
-  localStorage.removeItem(SESSION_KEY)
-  sessionStorage.removeItem(SESSION_KEY)
-}
-
 export function AuthProvider({ children }) {
-  const [session, setSession] = useState(() => readStoredSession())
+  const lastEventIdRef = useRef(null)
+  const sessionExpiredRef = useRef(false)
+  const [user, setUser] = useState(null)
+  const [expiresAt, setExpiresAt] = useState(null)
   const [initializing, setInitializing] = useState(true)
   const [sessionExpired, setSessionExpired] = useState(false)
 
   const clearSession = useCallback((expired = false) => {
-    removeStoredSession()
-    setSession(null)
+    sessionExpiredRef.current = expired
+    setUser(null)
+    setExpiresAt(null)
     setSessionExpired(expired)
   }, [])
 
@@ -51,19 +52,15 @@ export function AuthProvider({ children }) {
     const controller = new AbortController()
 
     const restoreSession = async () => {
-      if (!session?.token) {
-        setInitializing(false)
-        return
-      }
-
       try {
-        const response = await getCurrentUser(session.token, controller.signal)
-        const refreshed = { ...session, user: response.user }
-        const remember = Boolean(localStorage.getItem(SESSION_KEY))
-        storeSession(refreshed, remember)
-        setSession(refreshed)
+        const response = await getCurrentUser({
+          signal: controller.signal,
+          notifyUnauthorized: false,
+        })
+        setUser(response.user)
+        setExpiresAt(response.session?.expiresAt || null)
       } catch (error) {
-        if (error.name !== 'AbortError' && error.status === 401) clearSession(true)
+        if (error.name !== 'AbortError') clearSession(false)
       } finally {
         if (!controller.signal.aborted) setInitializing(false)
       }
@@ -71,16 +68,74 @@ export function AuthProvider({ children }) {
 
     void restoreSession()
     return () => controller.abort()
-    // Session restoration should only run when the provider mounts.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [clearSession])
+
+  useEffect(() => setUnauthorizedHandler(() => {
+    if (sessionExpiredRef.current) return
+    clearSession(true)
+    publishAuthEvent('SESSION_EXPIRED')
+  }), [clearSession])
+
+  useEffect(() => {
+    if (!expiresAt) return undefined
+    const remainingMs = Date.parse(expiresAt) - Date.now()
+    const timer = window.setTimeout(() => {
+      clearSession(true)
+      publishAuthEvent('SESSION_EXPIRED')
+    }, Number.isFinite(remainingMs) ? Math.max(remainingMs, 0) : 0)
+    return () => window.clearTimeout(timer)
+  }, [clearSession, expiresAt])
+
+  useEffect(() => {
+    const synchronize = async (event) => {
+      if (
+        !event?.type
+        || event.sourceTabId === TAB_ID
+        || event.id === lastEventIdRef.current
+      ) return
+      lastEventIdRef.current = event.id || null
+      if (event?.type === 'SIGNED_IN') {
+        try {
+          const response = await getCurrentUser({ notifyUnauthorized: false })
+          setUser(response.user)
+          setExpiresAt(response.session?.expiresAt || null)
+          sessionExpiredRef.current = false
+          setSessionExpired(false)
+        } catch {
+          clearSession(false)
+        }
+      } else if (event?.type === 'SESSION_EXPIRED') clearSession(true)
+      else if (event?.type === 'SIGNED_OUT' || event?.type === 'PASSWORD_CHANGED') {
+        clearSession(false)
+      }
+    }
+
+    const channel = 'BroadcastChannel' in window ? new BroadcastChannel(AUTH_CHANNEL) : null
+    const onChannelMessage = ({ data }) => void synchronize(data)
+    const onStorage = (event) => {
+      if (event.key !== AUTH_EVENT_KEY || !event.newValue) return
+      try {
+        void synchronize(JSON.parse(event.newValue))
+      } catch {
+        // Ignore malformed synchronization events from storage.
+      }
+    }
+
+    if (channel) channel.onmessage = onChannelMessage
+    window.addEventListener('storage', onStorage)
+    return () => {
+      channel?.close()
+      window.removeEventListener('storage', onStorage)
+    }
+  }, [clearSession])
 
   const login = useCallback(async (credentials, remember) => {
-    const response = await requestLogin(credentials)
-    const nextSession = { token: response.token, user: response.user }
-    storeSession(nextSession, remember)
-    setSession(nextSession)
+    const response = await requestLogin({ ...credentials, remember })
+    setUser(response.user)
+    setExpiresAt(response.session?.expiresAt || null)
+    sessionExpiredRef.current = false
     setSessionExpired(false)
+    publishAuthEvent('SIGNED_IN')
     return response.user
   }, [])
 
@@ -88,41 +143,29 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(async () => {
     try {
-      if (session?.token) await requestLogout(session.token)
+      await requestLogout()
     } finally {
       clearSession(false)
+      publishAuthEvent('SIGNED_OUT')
     }
-  }, [clearSession, session])
+  }, [clearSession])
 
   const refreshUser = useCallback(async () => {
-    if (!session?.token) return null
-    try {
-      const response = await getCurrentUser(session.token)
-      const refreshed = { ...session, user: response.user }
-      const remember = Boolean(localStorage.getItem(SESSION_KEY))
-      storeSession(refreshed, remember)
-      setSession(refreshed)
-      return response.user
-    } catch (error) {
-      if (error.status === 401) clearSession(true)
-      throw error
-    }
-  }, [clearSession, session])
+    const response = await getCurrentUser()
+    setUser(response.user)
+    setExpiresAt(response.session?.expiresAt || null)
+    return response.user
+  }, [])
 
   const changePassword = useCallback(async (payload) => {
-    if (!session?.token) throw new Error('Phiên đăng nhập không tồn tại')
-    try {
-      await requestPasswordChange(payload, session.token)
-      clearSession(false)
-    } catch (error) {
-      if (error.status === 401) clearSession(true)
-      throw error
-    }
-  }, [clearSession, session])
+    await requestPasswordChange(payload)
+    clearSession(false)
+    publishAuthEvent('PASSWORD_CHANGED')
+  }, [clearSession])
 
   const value = useMemo(() => ({
-    token: session?.token || null,
-    user: session?.user || null,
+    user,
+    expiresAt,
     initializing,
     sessionExpired,
     login,
@@ -130,10 +173,10 @@ export function AuthProvider({ children }) {
     logout,
     refreshUser,
     changePassword,
-    expireSession: () => clearSession(true),
     clearExpiredState: () => setSessionExpired(false),
   }), [
-    session,
+    user,
+    expiresAt,
     initializing,
     sessionExpired,
     login,
@@ -141,7 +184,6 @@ export function AuthProvider({ children }) {
     logout,
     refreshUser,
     changePassword,
-    clearSession,
   ])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

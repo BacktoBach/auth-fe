@@ -4,8 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import Alert from '../components/Alert.jsx'
 import FormField from '../components/FormField.jsx'
 import { useAuth } from '../context/useAuth.js'
-
-const passwordBytes = (value) => new TextEncoder().encode(value).length
+import { getApiFieldErrors, validateChangePasswordForm } from '../utils/validation.js'
 
 export default function ChangePasswordPage() {
   const { changePassword } = useAuth()
@@ -16,17 +15,6 @@ export default function ChangePasswordPage() {
   const [serverError, setServerError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  const validate = () => {
-    const nextErrors = {}
-    if (!form.oldPassword) nextErrors.oldPassword = 'Vui lòng nhập mật khẩu hiện tại.'
-    if (form.newPassword.length < 8) nextErrors.newPassword = 'Mật khẩu mới phải có ít nhất 8 ký tự.'
-    if (passwordBytes(form.newPassword) > 72) nextErrors.newPassword = 'Mật khẩu không được vượt quá 72 byte UTF-8.'
-    if (form.newPassword === form.oldPassword) nextErrors.newPassword = 'Mật khẩu mới phải khác mật khẩu hiện tại.'
-    if (form.confirmPassword !== form.newPassword) nextErrors.confirmPassword = 'Mật khẩu xác nhận không khớp.'
-    setErrors(nextErrors)
-    return Object.keys(nextErrors).length === 0
-  }
-
   const handleChange = (event) => {
     setForm((current) => ({ ...current, [event.target.name]: event.target.value }))
     setErrors((current) => ({ ...current, [event.target.name]: '' }))
@@ -35,12 +23,15 @@ export default function ChangePasswordPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault()
-    if (!validate()) return
+    const validationErrors = validateChangePasswordForm(form)
+    setErrors(validationErrors)
+    if (Object.keys(validationErrors).length) return
     setSubmitting(true)
     try {
       await changePassword({ oldPassword: form.oldPassword, newPassword: form.newPassword })
       navigate('/login', { replace: true, state: { message: 'Đổi mật khẩu thành công. Token cũ đã bị thu hồi, vui lòng đăng nhập lại.' } })
     } catch (requestError) {
+      setErrors(getApiFieldErrors(requestError))
       setServerError(requestError.message)
     } finally {
       setSubmitting(false)
