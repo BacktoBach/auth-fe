@@ -4,8 +4,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom'
 import Alert from '../components/Alert.jsx'
 import FormField from '../components/FormField.jsx'
 import { useAuth } from '../context/useAuth.js'
-
-const passwordBytes = (value) => new TextEncoder().encode(value).length
+import { getApiFieldErrors, validateRegisterForm } from '../utils/validation.js'
 
 export default function RegisterPage() {
   const { user, register } = useAuth()
@@ -19,17 +18,6 @@ export default function RegisterPage() {
 
   if (user) return <Navigate to={user.role === 'admin' ? '/admin' : '/dashboard'} replace />
 
-  const validate = () => {
-    const nextErrors = {}
-    if (form.name.trim().length < 2) nextErrors.name = 'Họ tên phải có ít nhất 2 ký tự.'
-    if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) nextErrors.email = 'Email không hợp lệ.'
-    if (form.password.length < 8) nextErrors.password = 'Mật khẩu phải có ít nhất 8 ký tự.'
-    if (passwordBytes(form.password) > 72) nextErrors.password = 'Mật khẩu không được vượt quá 72 byte UTF-8.'
-    if (form.confirmPassword !== form.password) nextErrors.confirmPassword = 'Mật khẩu xác nhận không khớp.'
-    setErrors(nextErrors)
-    return Object.keys(nextErrors).length === 0
-  }
-
   const handleChange = (event) => {
     setForm((current) => ({ ...current, [event.target.name]: event.target.value }))
     setErrors((current) => ({ ...current, [event.target.name]: '' }))
@@ -38,12 +26,19 @@ export default function RegisterPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault()
-    if (!validate()) return
+    const validationErrors = validateRegisterForm(form)
+    setErrors(validationErrors)
+    if (Object.keys(validationErrors).length) return
     setSubmitting(true)
     try {
-      await register({ name: form.name, email: form.email, password: form.password })
+      await register({
+        name: form.name.trim(),
+        email: form.email.trim(),
+        password: form.password,
+      })
       navigate('/login', { replace: true, state: { message: 'Đăng ký thành công. Hãy đăng nhập để tiếp tục.' } })
     } catch (requestError) {
+      setErrors(getApiFieldErrors(requestError))
       setServerError(requestError.message)
     } finally {
       setSubmitting(false)

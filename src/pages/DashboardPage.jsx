@@ -8,6 +8,16 @@ import { getUsers } from '../services/userService.js'
 
 const initials = (name = '') => name.split(' ').filter(Boolean).slice(-2).map((part) => part[0]).join('').toUpperCase()
 
+const formatExpiry = (expiresAt) => {
+  if (!expiresAt) return 'Không xác định'
+  const date = new Date(expiresAt)
+  if (Number.isNaN(date.getTime())) return 'Không xác định'
+  return new Intl.DateTimeFormat('vi-VN', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(date)
+}
+
 function StatCard({ icon: Icon, label, value, detail, tone = 'indigo' }) {
   const tones = { indigo: 'bg-indigo-50 text-indigo-700', emerald: 'bg-emerald-50 text-emerald-700', violet: 'bg-violet-50 text-violet-700' }
   return (
@@ -21,7 +31,7 @@ function StatCard({ icon: Icon, label, value, detail, tone = 'indigo' }) {
 }
 
 export default function DashboardPage() {
-  const { user, token, refreshUser, expireSession } = useAuth()
+  const { user, expiresAt, refreshUser } = useAuth()
   const [refreshing, setRefreshing] = useState(false)
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState('')
@@ -44,11 +54,10 @@ export default function DashboardPage() {
         if (user.role !== 'admin') return
 
         try {
-          const response = await getUsers({ page: 1, limit: 1, token, signal: controller.signal })
+          const response = await getUsers({ page: 1, limit: 1, signal: controller.signal })
           setTotalUsers(response.pagination.total)
         } catch (requestError) {
           if (requestError.name === 'AbortError') return
-          if (requestError.status === 401) expireSession()
           setTotalUsers(null)
         }
       }
@@ -58,7 +67,9 @@ export default function DashboardPage() {
 
     void loadOverview()
     return () => controller.abort()
-  }, [expireSession, token, user.role])
+  }, [user.role])
+
+  const formattedExpiry = formatExpiry(expiresAt)
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -101,7 +112,7 @@ export default function DashboardPage() {
 
       <section className={`grid gap-4 ${user.role === 'admin' ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
         <StatCard icon={Activity} label="Trạng thái API" value={apiHealthy === null ? 'Đang kiểm tra' : apiHealthy ? 'Sẵn sàng' : 'Gián đoạn'} detail="MongoDB health check" tone="emerald" />
-        <StatCard icon={Clock3} label="Thời hạn token" value="1 ngày" detail="Đăng nhập lại sau khi hết hạn" />
+        <StatCard icon={Clock3} label="Phiên hết hạn" value={formattedExpiry} detail="Thời gian do backend cung cấp" />
         {user.role === 'admin' && <StatCard icon={Users} label="Tổng người dùng" value={totalUsers ?? '—'} detail="Dữ liệu từ admin endpoint" tone="violet" />}
       </section>
 

@@ -4,6 +4,7 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import Alert from '../components/Alert.jsx'
 import FormField from '../components/FormField.jsx'
 import { useAuth } from '../context/useAuth.js'
+import { getApiFieldErrors, validateLoginForm } from '../utils/validation.js'
 
 export default function LoginPage() {
   const { user, login, clearExpiredState } = useAuth()
@@ -13,17 +14,22 @@ export default function LoginPage() {
   const [remember, setRemember] = useState(true)
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
 
   if (user) return <Navigate to={user.role === 'admin' ? '/admin' : '/dashboard'} replace />
 
   const handleChange = (event) => {
     setForm((current) => ({ ...current, [event.target.name]: event.target.value }))
+    setFieldErrors((current) => ({ ...current, [event.target.name]: '' }))
     setError('')
   }
 
   const handleSubmit = async (event) => {
     event.preventDefault()
+    const validationErrors = validateLoginForm(form)
+    setFieldErrors(validationErrors)
+    if (Object.keys(validationErrors).length) return
     setError('')
     setSubmitting(true)
     try {
@@ -39,6 +45,7 @@ export default function LoginPage() {
         : fallback
       navigate(destination, { replace: true })
     } catch (requestError) {
+      setFieldErrors(getApiFieldErrors(requestError))
       setError(requestError.message)
     } finally {
       setSubmitting(false)
@@ -57,8 +64,8 @@ export default function LoginPage() {
       {error && <div className="mb-5"><Alert>{error}</Alert></div>}
 
       <form className="space-y-5" onSubmit={handleSubmit}>
-        <FormField id="email" name="email" label="Email" type="email" placeholder="name@example.com" autoComplete="email" value={form.email} onChange={handleChange} required />
-        <FormField id="password" name="password" label="Mật khẩu" type="password" placeholder="Nhập mật khẩu" autoComplete="current-password" value={form.password} onChange={handleChange} showPassword={showPassword} onTogglePassword={() => setShowPassword((value) => !value)} required />
+        <FormField id="email" name="email" label="Email" type="email" placeholder="name@example.com" autoComplete="email" value={form.email} onChange={handleChange} error={fieldErrors.email} required />
+        <FormField id="password" name="password" label="Mật khẩu" type="password" placeholder="Nhập mật khẩu" autoComplete="current-password" value={form.password} onChange={handleChange} error={fieldErrors.password} showPassword={showPassword} onTogglePassword={() => setShowPassword((value) => !value)} required />
         <label className="flex w-fit cursor-pointer items-center gap-2.5 text-sm font-medium text-slate-600">
           <input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} className="size-4 rounded border-slate-300 accent-indigo-600" />
           Ghi nhớ đăng nhập
