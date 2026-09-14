@@ -1,6 +1,11 @@
 # JWT Auth Portal Frontend
 
-Frontend React cho [JWT Authentication API](https://auth-api-jne3.onrender.com), triển khai theo luồng xác thực chung và phân nhánh dashboard bằng role `user`/`admin`.
+Frontend React cho JWT Authentication API, triển khai luồng xác thực bằng JWT trong cookie `httpOnly` và phân nhánh dashboard theo role `user`/`admin`.
+
+## Links
+
+- Backend API production: [https://auth-api-jne3.onrender.com](https://auth-api-jne3.onrender.com)
+- Backend source code: [github.com/BacktoBach/auth-api](https://github.com/BacktoBach/auth-api)
 
 ## Công nghệ
 
@@ -28,7 +33,7 @@ Khi chạy local, Vite proxy `/api` và `/health` tới backend tại `http://lo
 | `/dashboard`       | User/Admin | Thông tin từ`GET /api/auth/me`      |
 | `/change-password` | User/Admin | Đổi mật khẩu và thu hồi token cũ |
 | `/admin`           | Admin      | Admin overview                          |
-| `/admin/users`     | Admin      | Danh sách user có pagination          |
+| `/admin/users`     | Admin      | Search và phân trang danh sách user  |
 | `/forbidden`       | Public     | Trang lỗi 403                          |
 | `/session-expired` | Public     | Phiên đăng nhập hết hạn           |
 
@@ -53,28 +58,46 @@ npm test
 npm run build
 ```
 
-
-
 ## Demo accounts
 
 - User account: Có thể đăng ký trực tiếp trên giao diện.
 - Admin account: user-render@example.com/NewPass123
 
-
-
 ## Deploy
 
-Project dùng `vercel.json` để:
-
-- Reverse proxy `/api/*` và `/health` sang [Auth API trên Render](https://auth-api-jne3.onrender.com).
-- Fallback các React Router path về `index.html`.
-
-API rewrite phải đứng trước SPA fallback. Không cần cấu hình `VITE_API_URL` trên Vercel.
-
-Sau khi deploy frontend, thêm domain frontend vào biến `CLIENT_ORIGIN` của backend Render. Có thể cấu hình nhiều origin bằng dấu phẩy:
+Frontend được deploy trên Vercel và backend được deploy độc lập trên Render. Hai service được kết nối bằng reverse proxy để browser luôn gọi API qua cùng origin với frontend:
 
 ```text
+Browser
+  -> https://auth-fe-backtobach.vercel.app/api/*
+  -> Vercel rewrite
+  -> https://auth-api-jne3.onrender.com/api/*
+```
+
+### Backend CORS and origin configuration
+
+Backend phải khai báo exact frontend origin trong biến `CLIENT_ORIGIN`. Production hiện sử dụng:
+
+```env
+CLIENT_ORIGIN=https://auth-fe-backtobach.vercel.app
+```
+
+Khi cần hỗ trợ nhiều frontend origin, các giá trị được phân tách bằng dấu phẩy, không có path hoặc dấu `/` cuối:
+
+```env
 http://localhost:5173,https://auth-fe-backtobach.vercel.app
 ```
 
-Production hiện dùng `CLIENT_ORIGIN=https://auth-fe-backtobach.vercel.app`. Sau deploy, kiểm tra login response có cookie `__Host-auth_session` với `HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/`, sau đó reload dashboard để xác minh `/me` khôi phục session.
+Preview deployment sử dụng domain Vercel khác production. Nếu cần test login trên preview, exact preview origin cũng phải được thêm tạm thời vào `CLIENT_ORIGIN`; backend không sử dụng wildcard origin khi gửi credential cookie.
+
+### Deployment verification
+
+Sau khi cả hai service hoạt động:
+
+1. Mở frontend production và đăng nhập.
+2. Kiểm tra request sử dụng `/api/auth/login`, không gọi trực tiếp domain Render từ browser.
+3. Kiểm tra login response không chứa raw JWT.
+4. Kiểm tra cookie `__Host-auth_session` có `HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/` và không có `Domain` attribute.
+5. Reload dashboard và xác minh `GET /api/auth/me` khôi phục session.
+6. Kiểm tra LocalStorage và SessionStorage không chứa JWT.
+7. Đăng xuất và xác minh protected route chuyển về `/login`.
